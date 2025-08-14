@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Find Your Adventure</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    * { box-sizing: border-box; }
+    body { 
+      font-family: Arial, sans-serif; 
+      margin: 0; 
+      padding: 15px; 
+      max-width: 800px; 
+      margin: 0 auto;
+      background-color: #f5f5f5;
+    }
+    
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 25px;
+      font-size: 1.8em;
+    }
+    
+    .form-group {
+      margin-bottom: 15px;
+    }
+    
+    .form-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    
+    .form-row .form-group {
+      flex: 1;
+      margin-bottom: 0;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: #555;
+    }
+    
+    input, select, button { 
+      padding: 12px; 
+      border: 2px solid #ddd;
+      border-radius: 6px;
+      font-size: 16px; /* Prevents zoom on iOS */
+      width: 100%;
+      background: white;
+    }
+    
+    input:focus, select:focus {
+      outline: none;
+      border-color: #4CAF50;
+    }
+    
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      margin: 5px 0;
+      transition: background-color 0.3s;
+    }
+    
+    button:hover {
+      background: #45a049;
+    }
+    
+    button:active {
+      transform: translateY(1px);
+    }
+    
+    #directionsBtn {
+      background: #2196F3;
+    }
+    
+    #directionsBtn:hover {
+      background: #1976D2;
+    }
+    
+    .button-row {
+      display: flex;
+      gap: 10px;
+      margin: 20px 0;
+    }
+    
+    .button-row button {
+      flex: 1;
+      margin: 0;
+    }
+    
+    .select-all {
+      margin-bottom: 15px;
+      padding: 10px;
+      background: #f0f8ff;
+      border-radius: 6px;
+    }
+    
+    .select-all label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    
+    .select-all input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      margin: 0;
+    }
+    
+    .categories { 
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+      padding: 15px;
+      background: #f9f9f9;
+      border-radius: 6px;
+    }
+    
+    .categories label { 
+      display: flex; 
+      align-items: center; 
+      gap: 10px;
+      margin: 0;
+      padding: 8px;
+      background: white;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: normal;
+      transition: background-color 0.2s;
+    }
+    
+    .categories label:hover {
+      background: #e8f5e8;
+    }
+    
+    .categories input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      margin: 0;
+    }
+    
+    #map { 
+      height: 50vh;
+      min-height: 300px;
+      margin: 20px 0; 
+      border-radius: 6px;
+      border: 2px solid #ddd;
+    }
+    
+    #result {
+      background: #e8f5e8;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 6px;
+      border-left: 4px solid #4CAF50;
+      font-size: 16px;
+      line-height: 1.4;
+    }
+    
+    #result:empty {
+      display: none;
+    }
+    
+    /* Mobile-specific styles */
+    @media (max-width: 600px) {
+      body {
+        padding: 10px;
+      }
+      
+      .container {
+        padding: 15px;
+      }
+      
+      h1 {
+        font-size: 1.5em;
+      }
+      
+      .form-row {
+        flex-direction: column;
+      }
+      
+      .categories {
+        grid-template-columns: 1fr;
+      }
+      
+      .button-row {
+        flex-direction: column;
+      }
+      
+      #map {
+        height: 40vh;
+        min-height: 250px;
+      }
+    }
+    
+    /* Very small screens */
+    @media (max-width: 400px) {
+      .container {
+        padding: 10px;
+      }
+      
+      input, select, button {
+        padding: 10px;
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🗺️ Find Your Adventure</h1>
+
+    <div class="form-group">
+      <label for="address">📍 Starting Address</label>
+      <input type="text" id="address" placeholder="Enter your starting point">
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="minDistance">📏 Min Distance</label>
+        <input type="number" id="minDistance" min="0" step="0.1" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label for="maxDistance">📏 Max Distance</label>
+        <input type="number" id="maxDistance" min="0" step="0.1" placeholder="1">
+      </div>
+      <div class="form-group">
+        <label for="units">📐 Units</label>
+        <select id="units">
+          <option value="miles" selected>Miles</option>
+          <option value="km">Kilometers</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="select-all">
+      <label><input type="checkbox" id="selectAll"> Select All Categories</label>
+    </div>
+    
+    <div class="categories" id="categoryList"></div>
+
+    <div class="button-row">
+      <button onclick="findAdventure()">🎯 Find Your Adventure</button>
+      <button onclick="surpriseMe()">🎲 Surprise Me</button>
+    </div>
+
+    <div id="result"></div>
+    <button id="directionsBtn" style="display:none;" onclick="openDirections()">🚶‍♂️ Get Walking Directions</button>
+
+    <div id="map"></div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    const allCategories = [
+      'park', 'museum', 'restaurant', 'cafe', 'library', 'bar', 'store', 'tourist_attraction'
+    ];
+    const osmCategoryMap = {
+      park: 'leisure=park',
+      museum: 'tourism=museum',
+      restaurant: 'amenity=restaurant',
+      cafe: 'amenity=cafe',
+      library: 'amenity=library',
+      bar: 'amenity=bar',
+      store: 'shop',
+      tourist_attraction: 'tourism=attraction'
+    };
+
+    const categoryList = document.getElementById('categoryList');
+    allCategories.forEach(cat => {
+      const label = document.createElement('label');
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.value = cat;
+      cb.addEventListener('change', updateSelectAllState);
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(' ' + cat.replace(/_/g,' ')));
+      categoryList.appendChild(label);
+    });
+
+    const selectAllCheckbox = document.getElementById('selectAll');
+
+    // Select All toggling
+    selectAllCheckbox.addEventListener('change', () => {
+      const checkboxes = document.querySelectorAll("#categoryList input");
+      const checked = selectAllCheckbox.checked;
+      checkboxes.forEach(cb => cb.checked = checked);
+    });
+
+    // Update Select All state based on individual checkboxes
+    function updateSelectAllState() {
+      const checkboxes = document.querySelectorAll("#categoryList input");
+      const checkedBoxes = document.querySelectorAll("#categoryList input:checked");
+      selectAllCheckbox.checked = checkboxes.length === checkedBoxes.length;
+      selectAllCheckbox.indeterminate = checkedBoxes.length > 0 && checkedBoxes.length < checkboxes.length;
+    }
+
+    function getSelectedCategories() {
+      return Array.from(document.querySelectorAll("#categoryList input:checked"))
+                  .map(cb => cb.value);
+    }
+
+    let map = L.map('map').setView([37.7749, -122.4194], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    let startMarker, destMarker, selectedPlace;
+    let startLat, startLon;
+
+    function validateDistances() {
+      let min = Math.max(0, parseFloat(document.getElementById('minDistance').value) || 0);
+      let max = Math.max(0, parseFloat(document.getElementById('maxDistance').value) || 0);
+      return {min, max};
+    }
+
+    function surpriseMe() {
+      const shuffled = [...allCategories].sort(() => 0.5 - Math.random());
+      const count = Math.floor(Math.random()*3)+1;
+      const randomCats = shuffled.slice(0,count);
+      document.querySelectorAll("#categoryList input").forEach(cb => {
+        cb.checked = randomCats.includes(cb.value);
+      });
+      updateSelectAllState();
+      findAdventure();
+    }
+
+    async function findAdventure() {
+      // Clear previous markers and result
+      if(startMarker) startMarker.remove();
+      if(destMarker) destMarker.remove();
+      document.getElementById('result').innerHTML = 'Searching...';
+      document.getElementById('directionsBtn').style.display='none';
+
+      const categories = getSelectedCategories();
+      console.log('Selected categories:', categories);
+      if(categories.length===0){ alert("Please select at least one category."); return;}
+
+      const address = document.getElementById('address').value;
+      const units = document.getElementById('units').value;
+      const {min, max} = validateDistances();
+      if(!address || !max || max<min) { alert("Please enter a valid address and distance range."); return; }
+
+      try {
+        console.log('Geocoding address:', address);
+        // Geocode
+        const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`);
+        if (!geoRes.ok) {
+          throw new Error(`Geocoding failed: ${geoRes.status}`);
+        }
+        const geoData = await geoRes.json();
+        console.log('Geocoding result:', geoData);
+        
+        if(!geoData.length){ 
+          document.getElementById('result').innerHTML = '';
+          alert("Address not found."); 
+          return; 
+        }
+        
+        startLat = parseFloat(geoData[0].lat);
+        startLon = parseFloat(geoData[0].lon);
+        console.log('Start coordinates:', startLat, startLon);
+
+        const maxMeters = units==='miles'? max*1609.34 : max*1000;
+        const minMeters = units==='miles'? min*1609.34 : min*1000;
+        console.log('Search radius:', minMeters, 'to', maxMeters, 'meters');
+
+        let catQueries = categories.map(c=>{
+          const tag = osmCategoryMap[c];
+          // Handle shop differently since it doesn't use key=value syntax
+          if (tag === 'shop') {
+            return `(node(around:${maxMeters},${startLat},${startLon})[shop];way(around:${maxMeters},${startLat},${startLon})[shop];);`;
+          } else {
+            return `(node(around:${maxMeters},${startLat},${startLon})[${tag}];way(around:${maxMeters},${startLat},${startLon})[${tag}];);`;
+          }
+        }).join('');
+
+        const overpassQuery = `[out:json][timeout:25];
+(
+${catQueries}
+);
+out center qt;`;
+        console.log('Overpass query:', overpassQuery);
+
+        const overpassRes = await fetch("https://overpass-api.de/api/interpreter",{
+          method:'POST', 
+          body: overpassQuery,
+          headers: {
+            'Content-Type': 'text/plain'
+          }
+        });
+        
+        if (!overpassRes.ok) {
+          throw new Error(`Overpass API failed: ${overpassRes.status}`);
+        }
+        
+        const overpassData = await overpassRes.json();
+        console.log('Overpass result:', overpassData);
+
+        if (!overpassData.elements) {
+          throw new Error('Invalid response from Overpass API');
+        }
+
+        const places = overpassData.elements.filter(el=>{
+          // Handle both nodes and ways
+          const lat = el.lat || (el.center && el.center.lat);
+          const lon = el.lon || (el.center && el.center.lon);
+          
+          if (!lat || !lon) return false;
+          
+          const d = haversine(startLat, startLon, lat, lon);
+          return d >= minMeters && d <= maxMeters && el.tags;
+        });
+
+        console.log('Filtered places:', places.length);
+
+        if(places.length===0){ 
+          document.getElementById('result').innerHTML = '';
+          alert("No places found in range. Try expanding your search radius or selecting different categories."); 
+          return; 
+        }
+
+        selectedPlace = places[Math.floor(Math.random()*places.length)];
+        
+        // Handle coordinates for both nodes and ways
+        const placeLat = selectedPlace.lat || (selectedPlace.center && selectedPlace.center.lat);
+        const placeLon = selectedPlace.lon || (selectedPlace.center && selectedPlace.center.lon);
+
+        const distanceMeters = haversine(startLat, startLon, placeLat, placeLon);
+        let distanceText = units==='miles' ? (distanceMeters/1609.34).toFixed(2)+' mi' : (distanceMeters/1000).toFixed(2)+' km';
+
+        const name = selectedPlace.tags.name || selectedPlace.tags.amenity || selectedPlace.tags.leisure || selectedPlace.tags.shop || selectedPlace.tags.tourism || 'Unknown Location';
+        const displayAddress = selectedPlace.tags["addr:street"] ? `${selectedPlace.tags["addr:street"]}, ${selectedPlace.tags["addr:city"]||''}` : '';
+        document.getElementById('result').innerHTML = `<b>${name}</b> ${displayAddress} — ${distanceText}`;
+        document.getElementById('directionsBtn').style.display='inline-block';
+
+        startMarker = L.marker([startLat,startLon]).addTo(map).bindPopup("Start");
+        destMarker = L.marker([placeLat, placeLon]).addTo(map).bindPopup(name);
+        map.fitBounds([[startLat,startLon], [placeLat, placeLon]], {padding: [20, 20]});
+        
+        // Store coordinates for directions
+        selectedPlace.displayLat = placeLat;
+        selectedPlace.displayLon = placeLon;
+
+      } catch (error) {
+        console.error('Error finding adventure:', error);
+        document.getElementById('result').innerHTML = '';
+        alert(`Error: ${error.message}. Please check the console for more details.`);
+      }
+    }
+
+    function openDirections(){
+      if(!selectedPlace) return;
+      const destLat = selectedPlace.displayLat || selectedPlace.lat;
+      const destLon = selectedPlace.displayLon || selectedPlace.lon;
+      window.open(`https://www.google.com/maps/dir/?api=1&origin=${startLat},${startLon}&destination=${destLat},${destLon}&travelmode=walking`,'_blank');
+    }
+
+    function haversine(lat1, lon1, lat2, lon2){
+      const R = 6371000;
+      const φ1 = lat1*Math.PI/180, φ2=lat2*Math.PI/180;
+      const Δφ=(lat2-lat1)*Math.PI/180;
+      const Δλ=(lon2-lon1)*Math.PI/180;
+      const a=Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
+      return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+    }
+  </script>
+</body>
+</html>
